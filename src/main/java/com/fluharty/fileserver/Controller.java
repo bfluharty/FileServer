@@ -1,7 +1,7 @@
 package com.fluharty.fileserver;
 
 import com.fluharty.fileserver.model.UserFile;
-import com.fluharty.fileserver.repository.UserFilesRepository;
+import com.fluharty.fileserver.service.UserFilesService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,10 +12,10 @@ import java.util.Map;
 
 @RestController
 public class Controller {
-    private final UserFilesRepository userFilesRepository;
+    private final UserFilesService userFilesService;
 
-    public Controller(UserFilesRepository userFilesRepository) {
-        this.userFilesRepository = userFilesRepository;
+    public Controller(UserFilesService userFilesService) {
+        this.userFilesService = userFilesService;
     }
 
     @GetMapping("/")
@@ -25,12 +25,12 @@ public class Controller {
 
     @GetMapping("/files")
     public ResponseEntity<Iterable<UserFile>> getFiles() {
-        return new ResponseEntity<>(this.userFilesRepository.findAll(), HttpStatus.OK);
+        return new ResponseEntity<>(userFilesService.getFiles(), HttpStatus.OK);
     }
 
     @PostMapping("/upload")
     public ResponseEntity<UserFile> uploadFiles(@RequestParam("file") MultipartFile file, @RequestHeader Map<String, String> headers) {
         UserFile userFile = new UserFile(headers.get("user"), file.getOriginalFilename(), LocalTime.now());
-        return new ResponseEntity<>(userFile, HttpStatus.CREATED);
+       return new ResponseEntity<>(userFile, userFilesService.upload(userFile));
     }
 }

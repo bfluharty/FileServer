@@ -1,6 +1,5 @@
 package com.fluharty.fileserver.config;
 
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3;
@@ -11,26 +10,17 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class AWSConfig {
-    // Injecting access key from application.properties
     @Value("${cloud.aws.credentials.accessKey}")
     private String accessKey;
-
-    // Injecting secret key from application.properties
     @Value("${cloud.aws.credentials.secretKey}")
     private String accessSecret;
-
-    // Injecting region from application.properties
     @Value("${cloud.aws.region.static}")
     private String region;
 
     @Bean
     public AmazonS3 s3Client() {
-        // Creating AWS credentials using access key and secret key
-        AWSCredentials credentials = new BasicAWSCredentials(accessKey, accessSecret);
-
-        // Building Amazon S3 client with specified credentials and region
         return AmazonS3ClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials(accessKey, accessSecret)))
                 .withRegion(region)
                 .build();
     }

@@ -22,13 +22,8 @@ public class AWSServiceImpl implements AWSService {
     private AmazonS3 s3Client;
 
     @Override
-    public void uploadFile(
-            final String bucketName,
-            final String keyName,
-            final Long contentLength,
-            final String contentType,
-            final InputStream value
-    ) throws AmazonClientException {
+    public void uploadFile(final String bucketName, final String keyName, final Long contentLength,
+                           final String contentType, final InputStream value) throws AmazonClientException {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(contentLength);
         metadata.setContentType(contentType);
@@ -37,10 +32,8 @@ public class AWSServiceImpl implements AWSService {
     }
 
     @Override
-    public ByteArrayOutputStream downloadFile(
-            final String bucketName,
-            final String keyName
-    ) throws IOException, AmazonClientException {
+    public ByteArrayOutputStream downloadFile(String bucketName, final String keyName) throws IOException,
+            AmazonClientException {
         S3Object s3Object = s3Client.getObject(bucketName, keyName);
         InputStream inputStream = s3Object.getObjectContent();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -50,6 +43,7 @@ public class AWSServiceImpl implements AWSService {
         while ((len = inputStream.read(buffer, 0, buffer.length)) != -1) {
             outputStream.write(buffer, 0, len);
         }
+
         return outputStream;
     }
 
@@ -75,10 +69,7 @@ public class AWSServiceImpl implements AWSService {
     }
 
     @Override
-    public void deleteFile(
-            final String bucketName,
-            final String keyName
-    ) throws AmazonClientException {
+    public void deleteFile(final String bucketName, final String keyName) throws AmazonClientException {
         s3Client.deleteObject(bucketName, keyName);
     }
 }

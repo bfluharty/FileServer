@@ -1,6 +1,7 @@
 package com.fluharty.fileserver.service;
 
 import com.fluharty.fileserver.model.UserFile;
+import com.fluharty.fileserver.utils.ErrorDetails;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 
@@ -11,4 +12,8 @@ public interface UserFileService {
 
     @Transactional
     HttpStatus upload(UserFile userFile);
+
+    byte[] download(String filename);
+
+    ErrorDetails delete(String filename);
 }

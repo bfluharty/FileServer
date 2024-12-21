@@ -34,17 +34,18 @@ public class AWSServiceImpl implements AWSService {
     @Override
     public ByteArrayOutputStream downloadFile(String bucketName, final String keyName) throws IOException,
             AmazonClientException {
-        S3Object s3Object = s3Client.getObject(bucketName, keyName);
-        InputStream inputStream = s3Object.getObjectContent();
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        try (S3Object s3Object = s3Client.getObject(bucketName, keyName);
+             InputStream inputStream = s3Object.getObjectContent();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 
-        int len;
-        byte[] buffer = new byte[4096];
-        while ((len = inputStream.read(buffer, 0, buffer.length)) != -1) {
-            outputStream.write(buffer, 0, len);
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, len);
+            }
+
+            return outputStream;
         }
-
-        return outputStream;
     }
 
     @Override
@@ -52,19 +53,15 @@ public class AWSServiceImpl implements AWSService {
         List<String> keys = new ArrayList<>();
         ObjectListing objectListing = s3Client.listObjects(bucketName);
 
-        while (true) {
+        do {
             List<S3ObjectSummary> objectSummaries = objectListing.getObjectSummaries();
-            if (objectSummaries.isEmpty()) {
-                break;
-            }
-
             objectSummaries.stream()
                     .map(S3ObjectSummary::getKey)
                     .filter(key -> !key.endsWith("/"))
                     .forEach(keys::add);
-
             objectListing = s3Client.listNextBatchOfObjects(objectListing);
-        }
+        } while (objectListing.isTruncated());
+
         return keys;
     }
 

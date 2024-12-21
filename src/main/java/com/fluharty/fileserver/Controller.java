@@ -1,23 +1,19 @@
 package com.fluharty.fileserver;
 
+import com.fluharty.fileserver.exception.FileServerException;
 import com.fluharty.fileserver.model.UserFile;
 import com.fluharty.fileserver.service.UserFileService;
-import com.fluharty.fileserver.utils.Constants;
-import com.fluharty.fileserver.utils.ErrorDetails;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.fluharty.fileserver.utils.Constants.FILE_NOT_FOUND;
 
@@ -41,7 +37,13 @@ public class Controller {
 
     @GetMapping("/download")
     public ResponseEntity<Resource> download(@RequestParam("filename") String filename, @RequestHeader Map<String, String> headers) {
-        ByteArrayResource resource = new ByteArrayResource(userFileService.download(filename));
+        ByteArrayResource resource;
+
+        if (!userFileService.getFiles().contains(filename)) {
+            throw new FileServerException(FILE_NOT_FOUND, null, HttpStatus.NOT_FOUND);
+        } else {
+            resource = new ByteArrayResource(userFileService.download(filename));
+        }
 
         return ResponseEntity.ok()
                 .contentLength(resource.contentLength())
@@ -56,21 +58,12 @@ public class Controller {
     }
 
     @DeleteMapping("/delete")
-    public ResponseEntity<ErrorDetails> delete(@RequestParam("filename") String filename, @RequestHeader Map<String, String> headers) {
-        ErrorDetails error;
+    public ResponseEntity<Void> delete(@RequestParam("filename") String filename, @RequestHeader Map<String, String> headers) {
         if (!userFileService.getFiles().contains(filename)) {
-            error = new ErrorDetails.Builder(FILE_NOT_FOUND.getKey(), FILE_NOT_FOUND.getValue())
-                    .status(HttpStatus.NOT_FOUND).build();
+            throw new FileServerException(FILE_NOT_FOUND, null, HttpStatus.NOT_FOUND);
         } else {
-            error = userFileService.delete(filename);
+            userFileService.delete(filename);
         }
-
-        HttpStatusCode status;
-        if (Objects.isNull(error)) {
-            status = HttpStatus.OK;
-        } else {
-            status = error.getStatus();
-        }
-        return ResponseEntity.status(status).body(error);
+        return ResponseEntity.ok().build();
     }
 }

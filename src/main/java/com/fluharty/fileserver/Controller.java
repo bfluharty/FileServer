@@ -52,9 +52,9 @@ public class Controller {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<UserFile> upload(@RequestParam("file") MultipartFile file, @RequestHeader Map<String, String> headers) {
-        UserFile userFile = new UserFile(headers.get("user"), file.getOriginalFilename(), LocalTime.now());
-        return new ResponseEntity<>(userFile, userFileService.upload(userFile));
+    public ResponseEntity<Void> upload(@RequestParam("file") MultipartFile file, @RequestHeader Map<String, String> headers) {
+        userFileService.upload(new UserFile(headers.get("user"), file.getOriginalFilename(), LocalTime.now()), file);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @DeleteMapping("/delete")

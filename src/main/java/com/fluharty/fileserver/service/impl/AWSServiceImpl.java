@@ -27,7 +27,6 @@ public class AWSServiceImpl implements AWSService {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(contentLength);
         metadata.setContentType(contentType);
-
         s3Client.putObject(bucketName, keyName, value, metadata);
     }
 

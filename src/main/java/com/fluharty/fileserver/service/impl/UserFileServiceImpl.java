@@ -8,8 +8,8 @@ import com.fluharty.fileserver.service.AWSService;
 import com.fluharty.fileserver.service.UserFileService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -38,9 +38,13 @@ public class UserFileServiceImpl implements UserFileService {
     }
 
     @Transactional
-    public HttpStatus upload(UserFile userFile) {
+    public void upload(UserFile userFile, MultipartFile file) {
         userFilesRepository.save(userFile);
-        return HttpStatus.CREATED;
+        try {
+            awsService.uploadFile(bucketName, file.getOriginalFilename(), file.getSize(), file.getContentType(), file.getInputStream());
+        } catch (AmazonClientException | IOException e) {
+            throw new FileServerException(FILE_UPLOAD, e.getMessage(), null);
+        }
     }
 
     public byte[] download(String filename) {

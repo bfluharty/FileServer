@@ -15,6 +15,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
+import static com.fluharty.fileserver.utils.Constants.FILE_ALREADY_EXISTS;
 import static com.fluharty.fileserver.utils.Constants.FILE_NOT_FOUND;
 
 @RestController
@@ -53,6 +54,10 @@ public class Controller {
 
     @PostMapping("/upload")
     public ResponseEntity<Void> upload(@RequestParam("file") MultipartFile file, @RequestHeader Map<String, String> headers) {
+        if (userFileService.getFiles().contains(file.getOriginalFilename())) {
+            throw new FileServerException(FILE_ALREADY_EXISTS, null, HttpStatus.CONFLICT);
+        }
+
         userFileService.upload(new UserFile(headers.get("user"), file.getOriginalFilename(), LocalTime.now()), file);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }

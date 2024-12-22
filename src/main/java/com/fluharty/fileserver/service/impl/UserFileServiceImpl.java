@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.fluharty.fileserver.utils.Constants.*;
 
@@ -24,17 +25,21 @@ public class UserFileServiceImpl implements UserFileService {
     private final UserFilesRepository userFilesRepository;
     private final AWSService awsService;
 
+    private final ConcurrentHashMap<String, List<String>> listFilesCache = new ConcurrentHashMap<>();
+
     public UserFileServiceImpl(UserFilesRepository userFilesRepository, AWSService awsService) {
         this.userFilesRepository = userFilesRepository;
         this.awsService = awsService;
     }
 
     public List<String> getFiles() {
-        try {
-            return awsService.listFiles(bucketName);
-        } catch (AmazonClientException e) {
-            throw new FileServerException(LIST_FILES, e.getMessage(), null);
-        }
+        return listFilesCache.computeIfAbsent(bucketName, key -> {
+            try {
+                return awsService.listFiles(bucketName);
+            } catch (AmazonClientException e) {
+                throw new FileServerException(LIST_FILES, e.getMessage(), null);
+            }
+        });
     }
 
     @Transactional
@@ -42,6 +47,7 @@ public class UserFileServiceImpl implements UserFileService {
         userFilesRepository.save(userFile);
         try {
             awsService.uploadFile(bucketName, file.getOriginalFilename(), file.getSize(), file.getContentType(), file.getInputStream());
+            refreshCacheAsync();
         } catch (AmazonClientException | IOException e) {
             throw new FileServerException(FILE_UPLOAD, e.getMessage(), null);
         }
@@ -58,8 +64,20 @@ public class UserFileServiceImpl implements UserFileService {
     public void delete(String filename) {
         try {
             awsService.deleteFile(bucketName, filename);
+            refreshCacheAsync();
         } catch (AmazonClientException e) {
             throw new FileServerException(FILE_DELETION, e.getMessage(), null);
         }
+    }
+
+    private void refreshCacheAsync() {
+        new Thread(() -> {
+            try {
+                List<String> files = awsService.listFiles(bucketName);
+                listFilesCache.put(bucketName, files);
+            } catch (AmazonClientException e) {
+                System.err.println("Failed to refresh file list cache: " + e.getMessage());
+            }
+        }).start();
     }
 }

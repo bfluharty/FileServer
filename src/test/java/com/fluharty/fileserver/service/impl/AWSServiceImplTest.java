@@ -99,6 +99,25 @@ class AWSServiceImplTest {
     }
 
     @Test
+    void testGetBucketSize() {
+        String bucketName = "test-bucket";
+        List<S3ObjectSummary> objectSummaries = new ArrayList<>();
+        S3ObjectSummary summary = new S3ObjectSummary();
+        summary.setSize(100L);
+        objectSummaries.add(summary);
+
+        ObjectListing objectListing = mock(ObjectListing.class);
+        when(objectListing.getObjectSummaries()).thenReturn(objectSummaries);
+        when(objectListing.isTruncated()).thenReturn(false);
+        when(s3Client.listNextBatchOfObjects(objectListing)).thenReturn(objectListing);
+        when(s3Client.listObjects(bucketName)).thenReturn(objectListing);
+
+        long bucketSize = awsService.getBucketSize(bucketName);
+
+        assertEquals(100L, bucketSize);
+    }
+
+    @Test
     void testUploadFileThrowsAmazonClientException() {
         String bucketName = "test-bucket";
         String keyName = "test-file.txt";
@@ -145,6 +164,17 @@ class AWSServiceImplTest {
 
         assertThrows(AmazonClientException.class, () -> {
             awsService.deleteFile(bucketName, keyName);
+        });
+    }
+
+    @Test
+    void testGetBucketSizeThrowsAmazonClientException() {
+        String bucketName = "test-bucket";
+
+        when(s3Client.listObjects(bucketName)).thenThrow(new AmazonClientException("AWS error"));
+
+        assertThrows(AmazonClientException.class, () -> {
+            awsService.getBucketSize(bucketName);
         });
     }
 }

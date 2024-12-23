@@ -24,4 +24,6 @@ public interface AWSService {
     List<String> listFiles(final String bucketName) throws AmazonClientException;
 
     void deleteFile(final String bucketName, final String keyName) throws AmazonClientException;
+
+    long getBucketSize(final String bucketName) throws AmazonClientException;
 }

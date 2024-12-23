@@ -15,4 +15,6 @@ public interface UserFileService {
     byte[] download(String filename);
 
     void delete(String filename);
+
+    long getBucketSize();
 }

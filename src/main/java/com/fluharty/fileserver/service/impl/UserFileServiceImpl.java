@@ -29,16 +29,17 @@ public class UserFileServiceImpl implements UserFileService {
     private final UserFilesRepository userFilesRepository;
     private final AWSService awsService;
 
-    private final ConcurrentHashMap<String, List<String>> listFilesCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object> listFilesCache = new ConcurrentHashMap<>();
 
     public UserFileServiceImpl(UserFilesRepository userFilesRepository, AWSService awsService) {
         this.userFilesRepository = userFilesRepository;
         this.awsService = awsService;
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> getFiles() {
         log.debug("Retrieving files from cache");
-        return listFilesCache.computeIfAbsent(bucketName, key -> {
+        return (List<String>) listFilesCache.computeIfAbsent("files", key -> {
             try {
                 log.debug("Retrieving files from AWS S3 bucket: {}", bucketName);
                 return awsService.listFiles(bucketName);
@@ -55,7 +56,7 @@ public class UserFileServiceImpl implements UserFileService {
         try {
             log.debug("Uploading file to AWS S3 bucket: {}", file.getOriginalFilename());
             awsService.uploadFile(bucketName, file.getOriginalFilename(), file.getSize(), file.getContentType(), file.getInputStream());
-            refreshCacheAsync();
+            refreshCache();
         } catch (AmazonClientException | IOException e) {
             log.error("Failed to upload file to AWS S3 bucket: {}", e.getMessage());
             throw new FileServerException(FILE_UPLOAD, e.getMessage(), null);
@@ -76,21 +77,44 @@ public class UserFileServiceImpl implements UserFileService {
         try {
             log.debug("Deleting file from AWS S3 bucket: {}", filename);
             awsService.deleteFile(bucketName, filename);
-            refreshCacheAsync();
+            refreshCache();
         } catch (AmazonClientException e) {
             log.error("Failed to delete file from AWS S3 bucket: {}", e.getMessage());
             throw new FileServerException(FILE_DELETION, e.getMessage(), null);
         }
     }
 
-    private void refreshCacheAsync() {
+    public long getBucketSize() {
+        log.debug("Retrieving bucket size from cache");
+        return (long) listFilesCache.computeIfAbsent("size", key -> {
+            try {
+                log.debug("Retrieving size of AWS S3 bucket: {}", bucketName);
+                return awsService.getBucketSize(bucketName);
+            } catch (AmazonClientException e) {
+                log.error("Failed to get size of AWS S3 bucket: {}", e.getMessage());
+                throw new FileServerException(STORAGE_LOOKUP, e.getMessage(), null);
+            }
+        });
+    }
+
+    private void refreshCache() {
         new Thread(() -> {
             try {
                 log.debug("Refreshing file list cache");
                 List<String> files = awsService.listFiles(bucketName);
-                listFilesCache.put(bucketName, files);
+                listFilesCache.put("files", files);
             } catch (AmazonClientException e) {
                 log.error("Failed to refresh file list cache: {}", e.getMessage());
+            }
+        }).start();
+
+        new Thread(() -> {
+            try {
+                log.debug("Refreshing bucket size cache");
+                Long bucketSize = awsService.getBucketSize(bucketName);
+                listFilesCache.put("size", bucketSize);
+            } catch (AmazonClientException e) {
+                log.error("Failed to refresh bucket size cache: {}", e.getMessage());
             }
         }).start();
     }

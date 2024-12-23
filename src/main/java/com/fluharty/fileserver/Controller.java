@@ -17,8 +17,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
-import static com.fluharty.fileserver.utils.Constants.FILE_ALREADY_EXISTS;
-import static com.fluharty.fileserver.utils.Constants.FILE_NOT_FOUND;
+import static com.fluharty.fileserver.utils.Constants.*;
 
 @RestController
 public class Controller {
@@ -48,7 +47,7 @@ public class Controller {
         ByteArrayResource resource;
 
         if (!userFileService.getFiles().contains(filename)) {
-            log.error("File not found: {}", filename);
+            log.warn("File not found: {}", filename);
             throw new FileServerException(FILE_NOT_FOUND, null, HttpStatus.NOT_FOUND);
         } else {
             resource = new ByteArrayResource(userFileService.download(filename));
@@ -63,9 +62,15 @@ public class Controller {
     @PostMapping("/upload")
     public ResponseEntity<Void> upload(@RequestParam("file") MultipartFile file, @RequestHeader Map<String, String> headers) {
         log.info("Uploading file: {} for user: {}", file.getOriginalFilename(), headers.get("user"));
+
         if (userFileService.getFiles().contains(file.getOriginalFilename())) {
-            log.error("File already exists: {}", file.getOriginalFilename());
+            log.warn("File already exists: {}", file.getOriginalFilename());
             throw new FileServerException(FILE_ALREADY_EXISTS, null, HttpStatus.CONFLICT);
+        }
+
+        if ((userFileService.getBucketSize() + file.getSize()) > STORAGE_LIMIT_BYTES) {
+            log.warn("Upload failed due to exceeding storage limit");
+            throw new FileServerException(STORAGE_LIMIT_EXCEEDED, null, HttpStatus.INSUFFICIENT_STORAGE);
         }
 
         userFileService.upload(new UserFile(headers.get("user"), file.getOriginalFilename(), LocalTime.now()), file);
@@ -76,7 +81,7 @@ public class Controller {
     public ResponseEntity<Void> delete(@RequestParam("filename") String filename, @RequestHeader Map<String, String> headers) {
         log.info("Deleting file: {} for user: {}", filename, headers.get("user"));
         if (!userFileService.getFiles().contains(filename)) {
-            log.error("File not found: {}", filename);
+            log.warn("File not found: {}", filename);
             throw new FileServerException(FILE_NOT_FOUND, null, HttpStatus.NOT_FOUND);
         } else {
             userFileService.delete(filename);

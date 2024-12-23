@@ -161,4 +161,23 @@ class UserFileServiceImplTest {
         assertTrue(files.isEmpty());
         verify(awsService, times(1)).listFiles(anyString());
     }
+
+    @Test
+    void testGetBucketSize() {
+        when(awsService.getBucketSize(anyString())).thenReturn(100L);
+
+        long size = userFileService.getBucketSize();
+
+        assertEquals(100L, size);
+    }
+
+    @Test
+    void testGetBucketSizeThrowsAmazonClientException() {
+        when(awsService.getBucketSize(anyString())).thenThrow(new AmazonClientException("AWS error"));
+
+        assertThrows(FileServerException.class, () -> {
+            userFileService.getBucketSize();
+        });
+    }
+
 }

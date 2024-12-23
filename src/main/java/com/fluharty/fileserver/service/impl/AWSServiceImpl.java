@@ -2,10 +2,7 @@ package com.fluharty.fileserver.service.impl;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.*;
 import com.fluharty.fileserver.service.AWSService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -67,5 +64,20 @@ public class AWSServiceImpl implements AWSService {
     @Override
     public void deleteFile(final String bucketName, final String keyName) throws AmazonClientException {
         s3Client.deleteObject(bucketName, keyName);
+    }
+
+    @Override
+    public long getBucketSize(String bucketName) {
+        long totalSize = 0;
+
+        ObjectListing objectListing = s3Client.listObjects(bucketName);
+        do {
+            for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
+                totalSize += objectSummary.getSize();
+            }
+            objectListing = s3Client.listNextBatchOfObjects(objectListing);
+        } while (objectListing.isTruncated());
+
+        return totalSize;
     }
 }
